@@ -44,6 +44,8 @@ DAY_PARTS = {
 geocoder_base = "http://geocode-maps.yandex.ru/1.x/?apikey=" + GEOCODER_API_KEY
 weather_base = "https://api.weather.yandex.ru/v2/informers"
 weather_headers = {"X-Yandex-API-Key": WEATHER_API_KEY}
+
+
 def get_city_coords(city):
     geocoder_request = geocoder_base + f"&geocode={city}&lang=ru_RU&format=json"
     response_city = requests.get(geocoder_request)
