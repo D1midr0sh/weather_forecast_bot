@@ -1,0 +1,4 @@
+[flake8]
+inline-quotes = double
+ignore = T201
+max-line-length = 97

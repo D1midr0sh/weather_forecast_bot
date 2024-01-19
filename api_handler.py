@@ -1,14 +1,16 @@
 # File to make all API-connected operations
 
 import json
+import os
+
+from dotenv import load_dotenv
 
 import requests
 
-city = input("Введите свой город:  ")
+load_dotenv()
 
-GEOCODER_API_KEY = "5fd2cc9c-5767-4584-84b9-2842f64f7fc5"
-WEATHER_API_KEY = "82d7f11f-c897-46ab-bc28-c2445ffd9e7d"
-# TODO: Relocate all vital constants to the dot-env file
+GEOCODER_API_KEY = os.environ.get("GEOCODER_API_KEY")
+WEATHER_API_KEY = os.environ.get("WEATHER_API_KEY")
 
 CONDITIONS = {
     "clear": "ясно",
@@ -42,27 +44,53 @@ DAY_PARTS = {
 geocoder_base = "http://geocode-maps.yandex.ru/1.x/?apikey=" + GEOCODER_API_KEY
 weather_base = "https://api.weather.yandex.ru/v2/informers"
 weather_headers = {"X-Yandex-API-Key": WEATHER_API_KEY}
-geocoder_request = geocoder_base + f"&geocode={city}&lang=ru_RU&format=json"
-response_city = requests.get(geocoder_request)
-if not response_city:
-    response_city.raise_for_status()
-city_response = json.loads(response_city.text)
-toponym = city_response["response"]["GeoObjectCollection"]["featureMember"][0][
-    "GeoObject"
-]
-coords = toponym["Point"]["pos"].split()
-weather_request = weather_base + f"?lat={coords[1]}&lon={coords[0]}"
-response_weather = requests.get(weather_request, headers=weather_headers)
-if not response_weather:
-    response_weather.raise_for_status()
-json_weather_response = json.loads(response_weather.text)
-# Getting our variables ready
-now = json_weather_response["fact"]
+def get_city_coords(city):
+    geocoder_request = geocoder_base + f"&geocode={city}&lang=ru_RU&format=json"
+    response_city = requests.get(geocoder_request)
+    if not response_city:
+        response_city.raise_for_status()
+    city_response = json.loads(response_city.text)
+    toponym = city_response["response"]["GeoObjectCollection"]["featureMember"][0][
+        "GeoObject"
+    ]
+    coords = toponym["Point"]["pos"].split()
+    return coords
 
-temp = now["temp"]
-like = now["feels_like"]
-cond = CONDITIONS[now["condition"]]
-print(
-    f"Сейчас в городе {city} {temp} градусов, ощущается как {like} градусов."
-    f" На улице {cond}."
-)
+
+def get_weather(city):
+    coords = get_city_coords(city)
+    weather_request = weather_base + f"?lat={coords[1]}&lon={coords[0]}"
+    response_weather = requests.get(weather_request, headers=weather_headers)
+    if not response_weather:
+        response_weather.raise_for_status()
+    json_weather_response = json.loads(response_weather.text)
+    # Getting our variables ready
+    now = json_weather_response["fact"]
+    now["condition"] = CONDITIONS[now["condition"]]
+    forecast = json_weather_response["forecast"]
+    weather = dict()
+    weather["now"] = now
+    weather["forecast"] = []
+    for part in forecast["parts"]:
+        part["condition"] = CONDITIONS[part["condition"]]
+        part["part_name"] = DAY_PARTS[part["part_name"]]
+        weather["forecast"].append(part)
+    weather["info"] = json_weather_response["info"]
+    return weather
+
+
+def get_message(city):
+    weather = get_weather(city)
+    message = "Привет!\n"
+    message += f"В твоём городе сейчас {weather['now']['condition']}, "
+    message += f"температура воздуха {weather['now']['temp']}, но"
+    message += f" ощущается как {weather['now']['feels_like']}."
+    for part in weather["forecast"]:
+        message += f"\n\n{part['part_name'].capitalize()} обещают что будет {part['condition']} "
+        message += f"и температура воздуха в среднем достигнет {part['temp_avg']} градусов."
+    message += f"\n\n Подробнее о прогнозе: {weather['info']['url']}"
+    return message
+
+
+city = input("Введите свой город:  ")
+print("\n" + get_message(city))
