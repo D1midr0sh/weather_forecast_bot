@@ -1,4 +1,4 @@
-# File to make all API-connected operations
+# File to make all API-related operations
 
 import json
 import os
@@ -84,15 +84,11 @@ def get_weather(city):
 def get_message(city):
     weather = get_weather(city)
     message = "Привет!\n"
-    message += f"В твоём городе сейчас {weather['now']['condition']}, "
+    message += f"В городе {city} сейчас {weather['now']['condition']}, "
     message += f"температура воздуха {weather['now']['temp']}, но"
     message += f" ощущается как {weather['now']['feels_like']}."
     for part in weather["forecast"]:
-        message += f"\n\n{part['part_name'].capitalize()} обещают что будет {part['condition']} "
-        message += f"и температура воздуха в среднем достигнет {part['temp_avg']} градусов."
-    message += f"\n\n Подробнее о прогнозе: {weather['info']['url']}"
+        message += f"\n\n{part['part_name'].capitalize()} обещают, что будет {part['condition']}"
+        message += f" и температура воздуха в среднем достигнет {part['temp_avg']} градусов."
+    message += f"\n\nПодробнее о прогнозе: {weather['info']['url']}"
     return message
-
-
-city = input("Введите свой город:  ")
-print("\n" + get_message(city))
